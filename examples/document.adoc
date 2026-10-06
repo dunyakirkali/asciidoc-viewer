@@ -1,0 +1,51 @@
+= Viewer Example
+:product-name: Widget
+
+Welcome to {product-name}. Here is *bold _nested emphasis_* and _italic_ text.
+
+[[supported-content]]
+== Supported content
+
+* First item
+** Nested item
+* Second item
+
+. First step
+. Second step
+
+.Source example
+[source,rust]
+----
+fn main() {
+    println!("<hello> {product-name}");
+}
+----
+
+Visit https://example.org[Example] or http://example.org[HTTP example].
+
+== Unsupported content
+
+.Unsupported table
+[cols="1,1"]
+|===
+|Name |Value
+|{product-name} |42
+|===
+
+.Unsupported image
+image::missing.png[An image]
+
+NOTE: This admonition must remain raw source.
+
+[WARNING]
+====
+This *formatted* warning must remain raw source.
+====
+
+include::missing.adoc[]
+
+include::https://example.org/remote.adoc[lines=1..3]
+
+Local link: link:other.adoc[Other document]. Cross-reference: <<supported-content,Section>>.
+
+Inline image: image:missing.png[Small].

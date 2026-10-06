@@ -1,0 +1,12 @@
+[package]
+name = "asciidoc-viewer"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+asciidoc-parser = "=0.31.2"
+
+[[example]]
+name = "parser_gate"
+path = "examples/parser_gate.rs"
