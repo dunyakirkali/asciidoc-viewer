@@ -1,10 +1,10 @@
 # Feasibility Research
 
-The initial investigation below was source inspection only. Research subagents failed with `You have no credits remaining`; inspection continued directly using the GitHub CLI. A subsequent executable processor gate is now implemented and passing; see [the design notes](design.md#processor-gate-result). No GPUI viewer has been implemented yet.
+The initial investigation below was source inspection only. Research subagents failed with `You have no credits remaining`; inspection continued directly using the GitHub CLI. The processor gate, native GPUI viewer, and on-save refresh check are now implemented and passing; see [the design notes](design.md#native-view-and-refresh-checks). Manual visual/input/accessibility acceptance remains open.
 
 ## Rust processors
 
-These are existing Rust parser libraries, not proposals to run Ruby or Node subprocesses. Versions below are source-manifest versions, not independently verified published releases.
+These are existing Rust parser libraries, not proposals to run Ruby or Node subprocesses. The initial comparison below records inspected source-manifest versions; published releases tested later are documented separately.
 
 | Candidate | Verified seams | Main concern |
 | --- | --- | --- |
@@ -37,6 +37,12 @@ Evaluate `asciidoc-parser` first. Its structured inline tree appears suitable fo
 
 The design must distinguish a **limited renderer** from a **limited processor**. Reusing a processor that already expands attributes may be simpler than deliberately disabling its existing semantics. Includes and other external-resource access remain a separate security and scope decision.
 
+### Follow-up processor probe
+
+The published `acdc-parser` 0.9.0 release parsed the example and exposed rich title inline trees. However, secure mode removed include directives without warnings in the probe (`Before.\ninclude::missing.adoc[]\nAfter.` became `Before.\nAfter.`). This does not prove original-source recovery is impossible, but switching processors would require another preservation gate. The experiment retains `asciidoc-parser` and falls back to original source for rich or HTML-escaped titles, rather than consuming its HTML title strings.
+
+The implemented projection also guards against detected removal of nonempty source lines, and recovers listing bodies through the source map: secure preprocessing rewrites includes even inside code blocks. Checks cover delimited/paragraph-style listings and empty code bodies. These are additional scoped preservation checks, not a general losslessness guarantee.
+
 ## Standalone GPUI
 
 Official GPUI documentation explicitly supports standalone applications. The inspected Zed snapshot uses `gpui_platform::application()` to choose host backends and GPUI views implementing `Render` to construct windows. No Zed workspace integration is required for that example.
@@ -57,20 +63,32 @@ Sources at Zed snapshot [`c3ab556`](https://github.com/zed-industries/zed/tree/c
 - [Styled and interactive text](https://github.com/zed-industries/zed/blob/c3ab5564f83ef5ec2b49f9ed4c8544b33c16401b/crates/gpui/src/elements/text.rs).
 - [Scrolling example](https://github.com/zed-industries/zed/blob/c3ab5564f83ef5ec2b49f9ed4c8544b33c16401b/crates/gpui/examples/scrollable.rs).
 
+### Published dependency/build result
+
+The viewer pins the published `gpui` 0.2.2 release, using `Application::new()`; `gpui_platform` was not available as a published dependency. This version differs from the initial Zed snapshot, so the working dependency/API choice comes from the actual local build rather than the newer example.
+
+The initial native build failed with `cannot execute tool 'metal' due to missing Metal Toolchain`. GPUI's existing `runtime_shaders` feature embeds its shader source and uses `MTLDevice`'s runtime library compiler, avoiding the missing build-time `metal` executable. With `font-kit` and `runtime_shaders`, the binary builds and opens a native Metal-backed window; the native refresh gate passes. No system toolchain download was performed.
+
+Published primary sources inspected locally: `gpui-0.2.2/Cargo.toml`, `build.rs`, `src/platform/mac/metal_renderer.rs`, `src/window.rs`, and `src/platform.rs` in the Cargo registry. The [published source archive](https://docs.rs/crate/gpui/0.2.2/source/) is the corresponding version, not the newer Zed snapshot.
+
 ## Local development facts
 
 - Host architecture: `arm64`.
 - `cargo`, `rustc`, and `rustup` commands exist.
 - `rustup show active-toolchain` reports `1.96.0-aarch64-apple-darwin`, selected by `RUSTUP_TOOLCHAIN`.
 - `xcode-select -p` reports `/Applications/Xcode.app/Contents/Developer`.
-- SDK completeness, Metal compilation, dependency resolution, and application startup have not been tested.
+- Locked dependency resolution, native binary build, runtime Metal shader compilation/window creation, and the native refresh gate pass on this host.
+- A separate Xcode Metal Toolchain is missing; runtime shader compilation avoids requiring it for this experiment.
+- Cargo reports an upstream future-incompatibility warning for `block` 0.1.6.
+- Window-only capture failed with `could not create image from window`; no capture/accessibility permission was requested.
 
 ## Open checks
 
-- Decide saved-file refresh versus unsaved-editor-buffer integration before selecting a refresh mechanism. Atomic-save replacement must be handled if filesystem watching is chosen; no watcher library was evaluated yet.
-- Decide whether attribute substitution is permitted despite the limited rendering subset.
-- Extend the passing scoped parser gate to other preprocessing removals and exhaustive malformed-input fallback; the initial checks establish original-source recovery for the committed examples, not arbitrary documents.
-- Check GPUI build and basic usability on the chosen target platform.
+- Extend source-preservation and malformed-input coverage beyond the checked examples; arbitrary-input losslessness and exhaustive warning classification are not established.
+- Establish visual/OS-input/browser/VoiceOver usability manually. GPUI 0.2.2's `Window::dispatch_event` returns a private type, preventing application-level synthetic event calls; the native gate checks our handler directly.
+- Reassess title AST access before promising native rendering of formatted or HTML-escaped headings.
+
+Saved-file-only refresh and built-in attribute substitution are settled design choices. Polling handles atomic replacement without introducing a watcher dependency; unsaved buffers remain out of scope.
 
 ## Inspection commands
 

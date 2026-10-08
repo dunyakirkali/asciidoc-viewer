@@ -4,9 +4,26 @@ version = "0.0.0"
 edition = "2024"
 publish = false
 
+[features]
+default = ["desktop"]
+# Keep parser checks runnable without the system graphics toolchain.
+desktop = ["dep:gpui"]
+
 [dependencies]
 asciidoc-parser = "=0.31.2"
+gpui = { version = "=0.2.2", optional = true, default-features = false, features = ["font-kit", "runtime_shaders"] }
+url = "=2.5.8"
+
+[[bin]]
+name = "asciidoc-viewer"
+path = "src/main.rs"
+required-features = ["desktop"]
 
 [[example]]
 name = "parser_gate"
 path = "examples/parser_gate.rs"
+
+[[example]]
+name = "viewer_gate"
+path = "examples/viewer_gate.rs"
+required-features = ["desktop"]
